@@ -1,0 +1,32 @@
+# Multimodal Lakehouse Demo - Real Components
+# Python 3.12+ required
+
+# Core framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+
+# Real-time
+websockets>=12.0
+
+# Lance — real columnar data format
+pylance>=0.8.0
+
+# Iceberg — real table format with ACID/time-travel
+pyiceberg>=0.7.0
+
+# S3 — real object storage (MinIO in Docker)
+boto3>=1.34.0
+
+# Ray — real distributed compute (match Docker image version)
+ray[default]==2.44.1
+
+# HTTP client (for Gravitino REST API calls)
+requests>=2.31.0
+
+# Arrow (required by pylance/pyiceberg)
+pyarrow>=15.0.0
+numpy>=1.24.0
+
+# DuckDB — SQL query engine for Lance/Iceberg data
+duckdb>=1.0.0

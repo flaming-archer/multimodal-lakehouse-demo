@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多模态湖仓处理平台</title>
+<link rel="stylesheet" href="/static/css/style.css?v=3">
+</head>
+<body>
+
+<header>
+  <span class="logo">多模态湖仓处理平台</span>
+  <span class="sub">演示版 v1.0</span>
+  <div class="header-stats">
+    <span class="header-stat"><span class="hs-label">Lance</span> <span class="hs-val" id="hs-lance">-</span></span>
+    <span class="header-stat"><span class="hs-label">Iceberg</span> <span class="hs-val" id="hs-ice">-</span></span>
+    <span class="header-stat"><span class="hs-label">S3</span> <span class="hs-val" id="hs-s3">-</span></span>
+  </div>
+  <span id="ws-status" class="status status-off">离线</span>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" data-panel="demo">演示中心</button>
+    <button class="tab" data-panel="data">数据管理</button>
+    <button class="tab" data-panel="benchmark">性能基准</button>
+    <button class="tab" data-panel="architecture">架构流程</button>
+    <button class="tab" data-panel="verify">验证中心</button>
+  </div>
+
+  <!-- Demo Center Panel (合并 语音解析演示 + 实时监控) -->
+  <div id="panel-demo" class="panel active">
+    <div class="demo-tabs">
+      <button class="demo-tab active" data-dtab="realtime">实时模拟</button>
+      <button class="demo-tab" data-dtab="offline">离线流水线</button>
+      <button class="demo-tab" data-dtab="voice">语音录制</button>
+      <button class="demo-tab" data-dtab="text">文字演示</button>
+    </div>
+
+    <!-- 实时模拟 -->
+    <div id="dt-realtime" class="dt-content">
+      <div class="grid2">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin-bottom:0">实时模拟</h3>
+            <div>
+              <span id="live-idle" style="font-size:11px;color:var(--muted)">等待中</span>
+              <span id="live-indicator" style="display:none;font-size:11px;color:var(--red)"><span class="live-dot"></span>实时接收中</span>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+            点击「固定模拟」启动三条演示通话的 LLM 解析，结果将实时推送到右侧面板
+          </p>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="startSimulation('fixed')">固定模拟</button>
+            <button class="btn" onclick="startSimulation('random')">随机模拟</button>
+            <button class="btn btn-danger" onclick="stopSimulation()">停止</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>实时分析推送</h3>
+          <div class="feed" id="realtime-feed">
+            <div style="color:var(--muted);font-size:12px;padding:10px;text-align:center">点击「固定模拟」实时接收分析结果</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 离线流水线 -->
+    <div id="dt-offline" class="dt-content" style="display:none">
+      <div class="card">
+        <h3>离线 —— 湖上多模数据处理流水线</h3>
+        <div id="offline-demo-area">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            将历史音频经过「加载语音 → 转写+情绪 → 智能分析 → 检索」四步处理，形成可查可用的数据资产
+          </p>
+          <div class="offline-flow" style="display:flex;align-items:flex-start;gap:0;flex-wrap:wrap;margin-bottom:16px;padding:16px;background:linear-gradient(135deg,#fafafa,#f5f5f2);border-radius:10px;border:1px solid var(--border)">
+            <div class="offline-step-node">
+              <div class="offline-step-circle" style="background:var(--blue)">1</div>
+              <div class="offline-step-label">📥 加载语音</div>
+              <div class="offline-step-desc">把分散的录音<br>统一入库管理</div>
+            </div>
+            <span class="offline-step-arrow">▸</span>
+            <div class="offline-step-node">
+              <div class="offline-step-circle" style="background:var(--accent)">2</div>
+              <div class="offline-step-label">🎙️ 转写+情绪</div>
+              <div class="offline-step-desc">语音转文字<br>提炼情绪标签</div>
+            </div>
+            <span class="offline-step-arrow">▸</span>
+            <div class="offline-step-node">
+              <div class="offline-step-circle" style="background:var(--green)">3</div>
+              <div class="offline-step-label">📝 智能分析</div>
+              <div class="offline-step-desc">PII脱敏+LLM分析<br>向量嵌入归类</div>
+            </div>
+            <span class="offline-step-arrow">▸</span>
+            <div class="offline-step-node">
+              <div class="offline-step-circle" style="background:var(--amber)">4</div>
+              <div class="offline-step-label">🎯 一键检索</div>
+              <div class="offline-step-desc">自然语言搜索<br>历史通话内容</div>
+            </div>
+          </div>
+          <div class="btn-group" style="margin-bottom:12px">
+            <button class="btn btn-primary" id="btn-offline-run" onclick="runOfflineDemo()">启动离线流水线</button>
+            <button class="btn" onclick="location.reload()">重置</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">或分步执行：</div>
+          <div class="btn-group" style="flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn" onclick="stepByStep(0)">1. 📥 加载语音</button>
+            <button class="btn" onclick="stepByStep(1)">2. 🎙️ 转写+情绪</button>
+            <button class="btn" onclick="stepByStep(2)">3. 📝 智能分析</button>
+            <button class="btn" onclick="stepByStep(3)">4. 🎯 一键检索</button>
+          </div>
+          <div id="offline-results" style="margin-top:12px"></div>
+          <div id="offline-result"></div>
+          <div id="search-panel" style="display:none;margin-top:12px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+              <select id="search-type" class="select-box" style="width:auto;margin-bottom:0" onchange="onSearchTypeChange()">
+                <option value="scalar">🔍 标量过滤</option>
+                <option value="ann">🔊 ANN 向量</option>
+              </select>
+              <input type="text" id="search-condition" class="select-box" style="flex:1;min-width:200px;margin-bottom:0" placeholder="条件如：bad_tone = true">
+              <input type="text" id="search-doc-id" class="select-box" style="flex:1;min-width:200px;margin-bottom:0;display:none" placeholder="参考文档ID" value="call_006_churn_angry.txt">
+              <select id="search-topk" class="select-box" style="width:80px;margin-bottom:0">
+                <option value="5">Top 5</option>
+                <option value="10">Top 10</option>
+                <option value="20">Top 20</option>
+              </select>
+              <button class="btn btn-primary" onclick="runSearch()">检索</button>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+              快捷条件：
+              <a href="javascript:void(0)" onclick="setSearchPreset('bad_tone = true')" class="sql-link">语气差</a>
+              <a href="javascript:void(0)" onclick="setSearchPreset('downgrade_related = true')" class="sql-link">降套餐</a>
+              <a href="javascript:void(0)" onclick='setSearchPreset("text_emotion = \"negative\"")' class="sql-link">负面情绪</a>
+            </div>
+            <div id="offline-search-result"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 语音录制 -->
+    <div id="dt-voice" class="dt-content" style="display:none">
+      <div style="background:#FFF8E6;border:1px solid #F0C040;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#8B6914;line-height:1.6">
+        ⚠️ <strong>演示说明：</strong>本页面提供录音交互体验（录制+回放），但实际语音转写（ASR）为模拟模式。
+        请录音后<strong>手动输入/粘贴通话文本</strong>，再点击「分析」按钮触发 LLM 解析。
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3>录音分析</h3>
+          <div class="record-area">
+            <button id="record-btn" class="record-btn" onclick="toggleRecording()" title="点击开始录音">🎤</button>
+            <div id="rec-timer" class="rec-timer" style="display:none">00:00</div>
+            <div id="waveform" class="waveform"></div>
+            <audio id="audio-player" class="audio-player" controls style="display:none"></audio>
+          </div>
+          <div class="transcript-editor" id="rec-transcript" contenteditable="true" data-placeholder="录音后在此输入或粘贴通话内容（当前为文字演示模式）..."></div>
+          <div class="btn-group" style="margin-top:10px">
+            <button class="btn btn-primary" id="btn-analyze-rec" onclick="analyzeRecording()" disabled>分析这段语音</button>
+            <button class="btn" id="btn-clear-rec" onclick="clearRecording()" disabled>清除</button>
+          </div>
+          <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+            <div class="mode-label">或上传音频文件（仅供回放，仍需手动输入文本）</div>
+            <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+              <div id="upload-hint">点击或拖拽音频文件到这里 (wav/mp3/webm)</div>
+              <input type="file" id="file-input" accept="audio/*" style="display:none" onchange="handleFileUpload(event)">
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>分析结果</h3>
+          <div id="analysis-result">
+            <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">录音后输入通话文本，点击「分析」获取结果</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 文字演示 -->
+    <div id="dt-text" class="dt-content" style="display:none">
+      <div class="grid2">
+        <div class="card">
+          <h3>选择演示通话</h3>
+          <select class="select-box" id="call-select" onchange="loadTranscript()">
+            <option value="">-- 选择一条通话 --</option>
+          </select>
+          <div class="transcript-preview" id="transcript-show">请选择一条演示通话...</div>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="analyzeCurrent()">分析当前通话</button>
+            <button class="btn" onclick="analyzeAll()">分析全部 (8条)</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>批量分析结果</h3>
+          <div id="analysis-result-demo">
+            <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">选择通话并点击分析</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Data Management Panel -->
+  <div id="panel-data" class="panel">
+    <div class="grid2">
+      <div class="card">
+        <h3>Lance 数据集</h3>
+        <div id="lance-data">
+          <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">加载中...</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Iceberg 表</h3>
+        <div id="iceberg-data">
+          <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">加载中...</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>💬 SQL 查询分析</h3>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px">
+        可用表: <strong id="sql-tables-list" style="color:var(--accent)">加载中...</strong> |
+        <a href="javascript:void(0)" onclick="refreshSqlTables()" style="color:var(--accent);font-size:11px">刷新</a>
+      </p>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="sql-editor" class="sql-editor" placeholder="输入 SQL 查询语句，如:&#10;SELECT risk_level, COUNT(*) AS cnt&#10;FROM voice_analysis&#10;GROUP BY risk_level&#10;ORDER BY cnt DESC" rows="4"></textarea>
+        <button class="btn btn-primary" onclick="executeSqlQuery()" style="white-space:nowrap;height:fit-content">执行</button>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">提示: 按 Ctrl+Enter (Mac: Cmd+Enter) 快速执行</div>
+      <div style="margin-top:6px;font-size:10px;color:var(--muted)">
+        快捷查询:
+        <a href="javascript:void(0)" onclick="quickSql('stats')" class="sql-link">统计风险分布</a>
+        <a href="javascript:void(0)" onclick="quickSql('churn')" class="sql-link">转网意图分析</a>
+        <a href="javascript:void(0)" onclick="quickSql('sentiment')" class="sql-link">情绪分析</a>
+        <a href="javascript:void(0)" onclick="quickSql('iceberg')" class="sql-link">Iceberg聚合</a>
+      </div>
+      <div id="sql-result" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h3>📋 历史数据浏览</h3>
+      <div class="btn-group" style="margin-bottom:10px">
+        <button class="btn btn-primary" onclick="loadHistoryData()">加载最近 20 条</button>
+        <button class="btn" onclick="loadAllHistory()">加载全部</button>
+      </div>
+      <div id="history-list">
+        <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">点击加载</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🔍 相似度搜索</h3>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="similarity-query" class="select-box" style="flex:1;margin-bottom:0" placeholder="输入查询文本，如: 我要转网，太贵了...">
+        <button class="btn btn-primary" onclick="runSimilaritySearch()">搜索</button>
+      </div>
+      <div id="similarity-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- Benchmark Panel -->
+  <div id="panel-benchmark" class="panel">
+    <div class="grid2">
+      <div class="card" style="border:2px solid var(--accent);background:linear-gradient(135deg,#f8f6ff,#fff)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin-bottom:0">🔬 关键词 vs LLM 对比</h3>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="runComparison()">⚡ 关键词 vs LLM 对比</button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          同一条文本分别用关键词规则和真实 LLM 解析，对比结果差异和耗时
+        </p>
+        <div id="comparison-result">
+          <div style="color:var(--muted);font-size:12px;padding:10px;text-align:center">点击按钮开始对比</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>🧪 延迟拆解</h3>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:10px">单请求各阶段耗时分析</p>
+        <div class="btn-group" style="margin-bottom:10px">
+          <button class="btn btn-primary" onclick="runLatencyBenchmark()">🔬 延迟测量</button>
+        </div>
+        <div id="latency-result">
+          <div style="color:var(--muted);font-size:12px;padding:10px;text-align:center">点击测量</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>📊 批量吞吐量测试</h3>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px">测试不同并发数下批量分析的吞吐量</p>
+      <div class="btn-group" style="margin-bottom:10px">
+        <button class="btn btn-primary" onclick="runThroughput()">🚀 运行吞吐量测试</button>
+      </div>
+      <div id="throughput-result"></div>
+    </div>
+  </div>
+
+  <!-- Architecture Panel -->
+  <div id="panel-architecture" class="panel">
+    <div class="card">
+      <h3>📊 数据流程图</h3>
+      <div style="text-align:center;overflow-x:auto">
+        <img src="/static/flow.png" alt="数据流程图" style="max-width:100%;border-radius:8px;border:1px solid var(--border)">
+      </div>
+    </div>
+    <div class="card">
+      <h3>多模态湖仓平台 — 完整架构</h3>
+      <div style="overflow-x:auto">
+        <svg viewBox="0 0 1100 620" style="width:100%;min-width:900px;height:auto" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#6b6b66"/>
+            </marker>
+            <marker id="arrow-accent" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#534AB7"/>
+            </marker>
+            <linearGradient id="g-frontend" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#EEEDFE"/><stop offset="100%" stop-color="#D4D0F5"/>
+            </linearGradient>
+            <linearGradient id="g-api" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#E6F1FB"/><stop offset="100%" stop-color="#B8D8F0"/>
+            </linearGradient>
+            <linearGradient id="g-llm" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#F0F7E8"/><stop offset="100%" stop-color="#C8E0A8"/>
+            </linearGradient>
+            <linearGradient id="g-lance" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FEF3E8"/><stop offset="100%" stop-color="#F5D8B0"/>
+            </linearGradient>
+            <linearGradient id="g-iceberg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#E8F4FA"/><stop offset="100%" stop-color="#A8D0E8"/>
+            </linearGradient>
+            <linearGradient id="g-s3" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FCEBEB"/><stop offset="100%" stop-color="#F0B8B8"/>
+            </linearGradient>
+            <linearGradient id="g-grav" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#F5F0FA"/><stop offset="100%" stop-color="#D0C0E8"/>
+            </linearGradient>
+            <linearGradient id="g-ray" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFF8E8"/><stop offset="100%" stop-color="#F0E0A8"/>
+            </linearGradient>
+            <linearGradient id="g-daft" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFF2EB"/><stop offset="100%" stop-color="#F5C8A0"/>
+            </linearGradient>
+          </defs>
+
+          <text x="15" y="30" font-size="11" fill="#6b6b66" font-weight="600">接入层</text>
+          <text x="15" y="130" font-size="11" fill="#6b6b66" font-weight="600">服务层</text>
+          <text x="15" y="250" font-size="11" fill="#6b6b66" font-weight="600">计算层</text>
+          <text x="15" y="370" font-size="11" fill="#6b6b66" font-weight="600">存储层</text>
+          <text x="15" y="510" font-size="11" fill="#6b6b66" font-weight="600">元数据层</text>
+
+          <line x1="70" y1="65" x2="1080" y2="65" stroke="#dcdcd8" stroke-dasharray="4,3"/>
+          <line x1="70" y1="195" x2="1080" y2="195" stroke="#dcdcd8" stroke-dasharray="4,3"/>
+          <line x1="70" y1="335" x2="1080" y2="335" stroke="#dcdcd8" stroke-dasharray="4,3"/>
+          <line x1="70" y1="465" x2="1080" y2="465" stroke="#dcdcd8" stroke-dasharray="4,3"/>
+
+          <rect x="350" y="0" width="400" height="55" rx="10" fill="url(#g-frontend)" stroke="#534AB7" stroke-width="1.5"/>
+          <text x="550" y="22" text-anchor="middle" font-size="14" font-weight="600" fill="#534AB7">Web 前端 (port 8888)</text>
+          <text x="550" y="42" text-anchor="middle" font-size="11" fill="#6b6b66">演示中心 · 数据管理 · 性能基准 · 架构流程 · 验证中心</text>
+
+          <rect x="350" y="80" width="400" height="65" rx="10" fill="url(#g-api)" stroke="#185FA5" stroke-width="1.5"/>
+          <text x="550" y="102" text-anchor="middle" font-size="14" font-weight="600" fill="#185FA5">FastAPI 主服务 (port 8888)</text>
+          <text x="550" y="120" text-anchor="middle" font-size="11" fill="#6b6b66">REST API · WebSocket 实时推送 · 路由分发</text>
+          <text x="550" y="136" text-anchor="middle" font-size="10" fill="#6b6b66">/api/voice/* · /api/lance/* · /api/iceberg/* · /api/s3/* · /api/system/verify</text>
+
+          <rect x="830" y="85" width="220" height="55" rx="10" fill="url(#g-llm)" stroke="#0F6E56" stroke-width="1.5"/>
+          <text x="940" y="107" text-anchor="middle" font-size="13" font-weight="600" fill="#0F6E56">LLM 意图解析引擎</text>
+          <text x="940" y="125" text-anchor="middle" font-size="10" fill="#6b6b66">意图识别 · 情感分析</text>
+          <text x="940" y="138" text-anchor="middle" font-size="10" fill="#6b6b66">风险评估 · 实体抽取</text>
+
+          <rect x="80" y="210" width="240" height="100" rx="10" fill="url(#g-daft)" stroke="#D94E0B" stroke-width="1.5"/>
+          <text x="200" y="232" text-anchor="middle" font-size="13" font-weight="600" fill="#D94E0B">⚙ Daft 离线计算引擎</text>
+          <text x="200" y="250" text-anchor="middle" font-size="10" fill="#6b6b66">批处理 ETL 编排</text>
+          <text x="200" y="266" text-anchor="middle" font-size="10" fill="#6b6b66">daft-lance 桥接层</text>
+          <rect x="100" y="275" width="90" height="22" rx="4" fill="#fff" stroke="#D94E0B" stroke-width="1"/>
+          <text x="145" y="290" text-anchor="middle" font-size="9" fill="#D94E0B">数据入湖</text>
+          <rect x="205" y="275" width="90" height="22" rx="4" fill="#fff" stroke="#D94E0B" stroke-width="1"/>
+          <text x="250" y="290" text-anchor="middle" font-size="9" fill="#D94E0B">湖上分析</text>
+
+          <rect x="370" y="210" width="240" height="100" rx="10" fill="url(#g-ray)" stroke="#854F0B" stroke-width="1.5"/>
+          <text x="490" y="232" text-anchor="middle" font-size="13" font-weight="600" fill="#854F0B">⚡ Ray 分布式计算</text>
+          <text x="490" y="250" text-anchor="middle" font-size="10" fill="#6b6b66">Ray 2.44.1 (Docker)</text>
+          <text x="490" y="266" text-anchor="middle" font-size="10" fill="#6b6b66">Dashboard: :8265</text>
+          <rect x="390" y="275" width="90" height="22" rx="4" fill="#fff" stroke="#854F0B" stroke-width="1"/>
+          <text x="435" y="290" text-anchor="middle" font-size="9" fill="#854F0B">并行分析</text>
+          <rect x="495" y="275" width="90" height="22" rx="4" fill="#fff" stroke="#854F0B" stroke-width="1"/>
+          <text x="540" y="290" text-anchor="middle" font-size="9" fill="#854F0B">分布式调度</text>
+
+
+
+          <rect x="80" y="350" width="280" height="100" rx="10" fill="url(#g-lance)" stroke="#854F0B" stroke-width="1.5"/>
+          <text x="220" y="372" text-anchor="middle" font-size="13" font-weight="600" fill="#854F0B">🔍 Lance 向量存储</text>
+          <text x="220" y="390" text-anchor="middle" font-size="10" fill="#6b6b66">pylance — 列式 + 向量检索</text>
+          <text x="220" y="406" text-anchor="middle" font-size="10" fill="#6b6b66">通话分析明细 · 相似度搜索</text>
+          <rect x="110" y="415" width="100" height="22" rx="4" fill="#fff" stroke="#854F0B" stroke-width="1"/>
+          <text x="160" y="430" text-anchor="middle" font-size="9" fill="#854F0B">ACID 写入</text>
+          <rect x="225" y="415" width="100" height="22" rx="4" fill="#fff" stroke="#854F0B" stroke-width="1"/>
+          <text x="275" y="430" text-anchor="middle" font-size="9" fill="#854F0B">向量检索</text>
+
+          <rect x="410" y="350" width="280" height="100" rx="10" fill="url(#g-iceberg)" stroke="#185FA5" stroke-width="1.5"/>
+          <text x="550" y="372" text-anchor="middle" font-size="13" font-weight="600" fill="#185FA5">🧊 Iceberg 分析表</text>
+          <text x="550" y="390" text-anchor="middle" font-size="10" fill="#6b6b66">pyiceberg — ACID + 时间旅行</text>
+          <text x="550" y="406" text-anchor="middle" font-size="10" fill="#6b6b66">每日聚合 · 快照隔离 · Schema演进</text>
+          <rect x="440" y="415" width="100" height="22" rx="4" fill="#fff" stroke="#185FA5" stroke-width="1"/>
+          <text x="490" y="430" text-anchor="middle" font-size="9" fill="#185FA5">时间旅行</text>
+          <rect x="555" y="415" width="100" height="22" rx="4" fill="#fff" stroke="#185FA5" stroke-width="1"/>
+          <text x="605" y="430" text-anchor="middle" font-size="9" fill="#185FA5">分区剪裁</text>
+
+          <rect x="740" y="350" width="280" height="100" rx="10" fill="url(#g-s3)" stroke="#993C1D" stroke-width="1.5"/>
+          <text x="880" y="372" text-anchor="middle" font-size="13" font-weight="600" fill="#993C1D">☁ MinIO / S3 对象存储</text>
+          <text x="880" y="390" text-anchor="middle" font-size="10" fill="#6b6b66">S3-compatible (Docker)</text>
+          <text x="880" y="406" text-anchor="middle" font-size="10" fill="#6b6b66">原始录音 · 转写文本 · 分析结果</text>
+          <rect x="770" y="415" width="100" height="22" rx="4" fill="#fff" stroke="#993C1D" stroke-width="1"/>
+          <text x="820" y="430" text-anchor="middle" font-size="9" fill="#993C1D">Console :9001</text>
+          <rect x="885" y="415" width="100" height="22" rx="4" fill="#fff" stroke="#993C1D" stroke-width="1"/>
+          <text x="935" y="430" text-anchor="middle" font-size="9" fill="#993C1D">API :9000</text>
+
+          <rect x="300" y="485" width="500" height="65" rx="10" fill="url(#g-grav)" stroke="#534AB7" stroke-width="1.5"/>
+          <text x="550" y="507" text-anchor="middle" font-size="13" font-weight="600" fill="#534AB7">🏛 Apache Gravitino 统一元数据管理</text>
+          <text x="550" y="525" text-anchor="middle" font-size="10" fill="#6b6b66">v1.1.1 (Docker) · REST API :8090</text>
+          <text x="550" y="541" text-anchor="middle" font-size="10" fill="#6b6b66">Metalake → Catalog → Schema → Fileset (管理 Lance/Iceberg/S3 元数据)</text>
+
+          <line x1="550" y1="55" x2="550" y2="78" stroke="#6b6b66" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="750" y1="112" x2="828" y2="112" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="400" y1="145" x2="200" y2="208" stroke="#D94E0B" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="480" y1="145" x2="490" y2="208" stroke="#854F0B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <line x1="220" y1="450" x2="380" y2="483" stroke="#534AB7" stroke-width="1" stroke-dasharray="5,3" marker-end="url(#arrow-accent)"/>
+          <line x1="550" y1="450" x2="550" y2="483" stroke="#534AB7" stroke-width="1" stroke-dasharray="5,3" marker-end="url(#arrow-accent)"/>
+          <line x1="880" y1="450" x2="720" y2="483" stroke="#534AB7" stroke-width="1" stroke-dasharray="5,3" marker-end="url(#arrow-accent)"/>
+
+          <rect x="80" y="565" width="940" height="45" rx="6" fill="#fafafa" stroke="#dcdcd8"/>
+          <text x="100" y="585" font-size="10" fill="#6b6b66" font-weight="600">图例:</text>
+          <line x1="145" y1="582" x2="175" y2="582" stroke="#6b6b66" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <text x="183" y="585" font-size="10" fill="#6b6b66">数据流</text>
+          <line x1="245" y1="582" x2="275" y2="582" stroke="#534AB7" stroke-width="1" stroke-dasharray="5,3" marker-end="url(#arrow-accent)"/>
+          <text x="283" y="585" font-size="10" fill="#6b6b66">元数据注册</text>
+          <text x="100" y="602" font-size="10" fill="#6b6b66">🟢 实时路径: 前端 → API → LLM → Lance + S3 + Iceberg (毫秒级响应)</text>
+          <text x="550" y="602" font-size="10" fill="#6b6b66">🟡 离线路径: Daft + Ray 批量读取 → 并行 LLM → Lance/Iceberg/S3 (小时级ETL)</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verification Center -->
+  <div id="panel-verify" class="panel">
+    <div class="verify-summary" id="verify-summary">
+      <span class="loading-spin"></span>正在验证所有组件...
+    </div>
+    <div id="verify-error">
+      <div class="err-title">验证服务异常</div>
+      <div class="err-detail" id="verify-error-detail"></div>
+    </div>
+    <div class="verify-grid" id="verify-grid">
+      <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center;grid-column:1/-1">
+        <span class="loading-spin"></span>正在探测组件状态...
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn" onclick="runVerify()" id="btn-reverify">🔄 重新验证</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/app.js?v=3"></script>
+</body>
+</html>

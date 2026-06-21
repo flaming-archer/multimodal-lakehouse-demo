@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.env
+.venv
+venv/
+
+# Data - local data files, can be large
+data/
+*.db
+*.duckdb
+
+# Docker volumes
+volumes/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# CodeBuddy / WorkBuddy internal
+.codebuddy/
+.workbuddy/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Temp files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Test payloads with sensitive data
+test_payload.json
