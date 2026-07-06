@@ -110,6 +110,14 @@ def _analyze_with_codebuddy(call_id: str, transcript: str) -> CallAnalysis:
             )
     return llm_parser.analyze(call_id, transcript)
 
+
+async def _analyze_with_codebuddy_async(call_id: str, transcript: str) -> CallAnalysis:
+    """异步版本：将同步 LLM 调用卸载到线程池，避免阻塞事件循环。"""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        None, _analyze_with_codebuddy, call_id, transcript
+    )
+
 # S3 storage — will be initialized after moto server starts
 s3_store: Optional[LakehouseS3Storage] = None
 
@@ -478,7 +486,11 @@ def get_demo_transcripts():
 def analyze_voice(req: TranscriptRequest):
     """Analyze one call transcript — intent, reasons, sentiment, risk.
     Returns per-stage timing breakdown for latency evaluation.
+
+    关键词规则分析和真实LLM分析并发执行，减少端到端延迟。
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     _overall_t0 = time.time()
     transcript = req.transcript.strip()
     if not transcript:
@@ -486,9 +498,18 @@ def analyze_voice(req: TranscriptRequest):
 
     call_id = req.call_id or f"call_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    # 1. LLM analysis
+    # 1. 并发提交关键词分析 + 真实LLM分析 + 提示词生成
     _t_llm = time.time()
-    analysis = llm_parser.analyze(call_id, transcript)
+    executor = ThreadPoolExecutor(max_workers=3)
+    keyword_fut = executor.submit(llm_parser.analyze, call_id, transcript)
+    prompt_fut = executor.submit(llm_parser.analyze_with_llm_prompt, transcript)
+    if is_llm_available():
+        llm_real_fut = executor.submit(llm_client.analyze_transcript, transcript)
+    else:
+        llm_real_fut = None
+
+    # 等待关键词分析完成（后续存储写入依赖它）
+    analysis = keyword_fut.result()
     _llm_ms = (time.time() - _t_llm) * 1000
 
     # 2. Write to Lance (real Lance format with vector embeddings)
@@ -560,19 +581,20 @@ def analyze_voice(req: TranscriptRequest):
         ice_ok = False
     _ice_ms = (time.time() - _t_ice) * 1000
 
-    # 5. Real LLM analysis (if configured)
+    # 5. 获取真实LLM分析结果（在存储写入期间 LLM 已在后台并发执行）
     _t_llm_real = time.time()
     llm_result = None
-    if is_llm_available():
+    if llm_real_fut:
         try:
-            llm_result = llm_client.analyze_transcript(transcript)
+            llm_result = llm_real_fut.result()
         except Exception as e:
             print("[LLM] Real LLM call failed: {}".format(e))
     _llm_real_ms = (time.time() - _t_llm_real) * 1000
 
-    # 6. Generate LLM prompt for deeper analysis
-    llm_prompt = llm_parser.analyze_with_llm_prompt(transcript)
+    # 6. 获取提示词生成结果
+    llm_prompt = prompt_fut.result()
 
+    executor.shutdown(wait=False)
     _total_ms = (time.time() - _overall_t0) * 1000
 
     return {
@@ -1050,8 +1072,9 @@ async def realtime_voice(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             # Parse incoming transcript (CodeBuddy LLM with keyword fallback)
+            # 使用异步版本避免阻塞事件循环
             _t0 = time.time()
-            analysis = _analyze_with_codebuddy("realtime", data)
+            analysis = await _analyze_with_codebuddy_async("realtime", data)
             _elapsed_ms = round((time.time() - _t0) * 1000, 1)
 
             # Write to Lance (async)
@@ -1153,8 +1176,9 @@ async def simulation_start():
                     break
 
                 # CodeBuddy LLM analysis (keyword fallback) with timing
+                # 使用异步版本避免阻塞事件循环
                 _t0 = time.time()
-                analysis = _analyze_with_codebuddy(call["call_id"], call["transcript"])
+                analysis = await _analyze_with_codebuddy_async(call["call_id"], call["transcript"])
                 _elapsed_ms = round((time.time() - _t0) * 1000, 1)
 
                 # Write to Lance
@@ -1283,8 +1307,9 @@ async def simulation_random_start(count: int = SIM_RANDOM_COUNT):
                     break
 
                 # CodeBuddy LLM analysis (keyword fallback) with timing
+                # 使用异步版本避免阻塞事件循环
                 _t0 = time.time()
-                analysis = _analyze_with_codebuddy(call["call_id"], call["transcript"])
+                analysis = await _analyze_with_codebuddy_async(call["call_id"], call["transcript"])
                 _elapsed_ms = round((time.time() - _t0) * 1000, 1)
 
                 # Write to Lance
@@ -1371,13 +1396,24 @@ def benchmark_latency():
     """Measure end-to-end latency with per-stage breakdown.
 
     Uses a generated random transcript to simulate a real request.
+    Keyword and real LLM analysis run concurrently.
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     transcript = call_generator.generate_one()
     t0 = time.time()
 
-    # Stage 1: LLM analysis (hot path)
+    executor = ThreadPoolExecutor(max_workers=2)
+
+    # Stage 1: LLM analysis (keyword + real LLM concurrently)
     t1 = time.time()
-    analysis = llm_parser.analyze("bench", transcript)
+    keyword_fut = executor.submit(llm_parser.analyze, "bench", transcript)
+    if is_llm_available():
+        llm_real_fut = executor.submit(llm_client.analyze_transcript, transcript)
+    else:
+        llm_real_fut = None
+
+    analysis = keyword_fut.result()
     llm_ms = (time.time() - t1) * 1000
 
     # Stage 2: Lance write
@@ -1418,16 +1454,17 @@ def benchmark_latency():
             pass
     s3_ms = (time.time() - t3) * 1000
 
-    # Stage 4: Real LLM analysis (if configured)
+    # Stage 4: Real LLM analysis result (already started concurrently)
     t4 = time.time()
     llm_result = None
-    if is_llm_available():
+    if llm_real_fut:
         try:
-            llm_result = llm_client.analyze_transcript(transcript)
+            llm_result = llm_real_fut.result()
         except Exception:
             pass
     llm_real_ms = (time.time() - t4) * 1000
 
+    executor.shutdown(wait=False)
     total_ms = (time.time() - t0) * 1000
 
     return {

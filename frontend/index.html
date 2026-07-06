@@ -31,43 +31,14 @@
   <!-- Demo Center Panel (合并 语音解析演示 + 实时监控) -->
   <div id="panel-demo" class="panel active">
     <div class="demo-tabs">
-      <button class="demo-tab active" data-dtab="realtime">实时模拟</button>
-      <button class="demo-tab" data-dtab="offline">离线流水线</button>
+      <button class="demo-tab active" data-dtab="offline">离线流水线</button>
+      <button class="demo-tab" data-dtab="realtime">实时模拟</button>
       <button class="demo-tab" data-dtab="voice">语音录制</button>
       <button class="demo-tab" data-dtab="text">文字演示</button>
     </div>
 
-    <!-- 实时模拟 -->
-    <div id="dt-realtime" class="dt-content">
-      <div class="grid2">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3 style="margin-bottom:0">实时模拟</h3>
-            <div>
-              <span id="live-idle" style="font-size:11px;color:var(--muted)">等待中</span>
-              <span id="live-indicator" style="display:none;font-size:11px;color:var(--red)"><span class="live-dot"></span>实时接收中</span>
-            </div>
-          </div>
-          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-            点击「固定模拟」启动三条演示通话的 LLM 解析，结果将实时推送到右侧面板
-          </p>
-          <div class="btn-group">
-            <button class="btn btn-primary" onclick="startSimulation('fixed')">固定模拟</button>
-            <button class="btn" onclick="startSimulation('random')">随机模拟</button>
-            <button class="btn btn-danger" onclick="stopSimulation()">停止</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>实时分析推送</h3>
-          <div class="feed" id="realtime-feed">
-            <div style="color:var(--muted);font-size:12px;padding:10px;text-align:center">点击「固定模拟」实时接收分析结果</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 离线流水线 -->
-    <div id="dt-offline" class="dt-content" style="display:none">
+    <div id="dt-offline" class="dt-content">
       <div class="card">
         <h3>离线 —— 湖上多模数据处理流水线</h3>
         <div id="offline-demo-area">
@@ -134,6 +105,35 @@
               <a href="javascript:void(0)" onclick='setSearchPreset("text_emotion = \"negative\"")' class="sql-link">负面情绪</a>
             </div>
             <div id="offline-search-result"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 实时模拟 -->
+    <div id="dt-realtime" class="dt-content" style="display:none">
+      <div class="grid2">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin-bottom:0">实时模拟</h3>
+            <div>
+              <span id="live-idle" style="font-size:11px;color:var(--muted)">等待中</span>
+              <span id="live-indicator" style="display:none;font-size:11px;color:var(--red)"><span class="live-dot"></span>实时接收中</span>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+            点击「固定模拟」启动三条演示通话的 LLM 解析，结果将实时推送到右侧面板
+          </p>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="startSimulation('fixed')">固定模拟</button>
+            <button class="btn" onclick="startSimulation('random')">随机模拟</button>
+            <button class="btn btn-danger" onclick="stopSimulation()">停止</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>实时分析推送</h3>
+          <div class="feed" id="realtime-feed">
+            <div style="color:var(--muted);font-size:12px;padding:10px;text-align:center">点击「固定模拟」实时接收分析结果</div>
           </div>
         </div>
       </div>

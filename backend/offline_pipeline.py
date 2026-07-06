@@ -499,26 +499,29 @@ def _write_transcribe_to_lance(lance_uri: str, results: List[Dict]) -> List[str]
 def analyze_text(
     lance_uri: str,
     enable_llm: bool = True,
+    concurrency: int = 8,
 ) -> Dict:
     """
     对已转写的文本进行 PII 脱敏 → LLM 意图/情绪分析 → 向量嵌入 → 写回Lance。
 
     LLM 调用走 llm_client（支持 CodeBuddy/OpenAI），不可用时自动降级规则分析。
+    使用 ThreadPoolExecutor 并发调用 LLM，大幅减少批处理耗时。
     分析完成后同时计算 128 维文本特征嵌入向量，一并写入 Lance 表，
     供步骤 4 的 ANN 向量检索使用。
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     t0 = time.time()
     ds = lance.dataset(lance_uri)
-    schema_names = ds.schema.names
-
-    # 读取已转写的文本
     table = ds.to_table(columns=["doc_id", "transcript"])
+    total_rows = table.num_rows
 
-    results = []
     llm_available = enable_llm and is_llm_available()
-    for i in range(table.num_rows):
-        doc_id = table["doc_id"][i].as_py()
-        transcript = table["transcript"][i].as_py() or ""
+
+    def _process_one(idx):
+        """处理单条记录，线程安全。"""
+        doc_id = table["doc_id"][idx].as_py()
+        transcript = table["transcript"][idx].as_py() or ""
 
         # PII 脱敏
         redacted = _redact_pii(transcript)
@@ -555,10 +558,25 @@ def analyze_text(
         if not llm_used:
             analysis_fields = _rule_based_analyze(redacted)
 
-        results.append({
+        return idx, {
             "doc_id": doc_id,
             **analysis_fields,
-        })
+        }
+
+    # 并发处理所有记录
+    results_map = {}
+    max_workers = min(concurrency, total_rows) if total_rows > 0 else 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_process_one, i): i
+            for i in range(total_rows)
+        }
+        for future in as_completed(futures):
+            idx, result = future.result()
+            results_map[idx] = result
+
+    # 按原始顺序排列结果
+    results = [results_map[i] for i in range(total_rows)]
 
     _pipeline_state["analyzed"] = True
     elapsed = round(time.time() - t0, 3)
@@ -584,8 +602,14 @@ def analyze_text(
 def analyze_text_stream(
     lance_uri: str,
     enable_llm: bool = True,
+    concurrency: int = 8,
 ):
-    """Generator 版 analyze_text，逐条 yield 进度，供 SSE 前端实时展示。"""
+    """Generator 版 analyze_text，逐条 yield 进度，供 SSE 前端实时展示。
+
+    使用 ThreadPoolExecutor 并发调用 LLM，不再串行等待每一条。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     t0 = time.time()
     ds = lance.dataset(lance_uri)
     table = ds.to_table(columns=["doc_id", "transcript"])
@@ -593,16 +617,16 @@ def analyze_text_stream(
 
     yield {"event": "start", "step": "analyze-text", "total": total}
 
-    results = []
     llm_available = enable_llm and is_llm_available()
-    for i in range(total):
-        doc_id = table["doc_id"][i].as_py()
-        transcript = table["transcript"][i].as_py() or ""
 
-        yield {
-            "event": "progress", "step": "analyze-text",
-            "doc_id": doc_id, "current": i + 1, "total": total,
-        }
+    # 预获取所有 doc_id / transcript，线程内按索引访问
+    doc_ids = [table["doc_id"][i].as_py() for i in range(total)]
+    transcripts = [table["transcript"][i].as_py() or "" for i in range(total)]
+
+    def _process_one(idx):
+        """处理单条记录，线程安全。"""
+        doc_id = doc_ids[idx]
+        transcript = transcripts[idx]
 
         # PII 脱敏
         redacted = _redact_pii(transcript)
@@ -640,10 +664,32 @@ def analyze_text_stream(
         if not llm_used:
             analysis_fields = _rule_based_analyze(redacted)
 
-        results.append({
+        return idx, {
             "doc_id": doc_id,
             **analysis_fields,
-        })
+        }
+
+    # 并发处理所有记录，as_completed 按完成顺序拿到结果
+    results_map = {}
+    completed_count = 0
+    max_workers = min(concurrency, total) if total > 0 else 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_process_one, i): i
+            for i in range(total)
+        }
+        for future in as_completed(futures):
+            idx, result = future.result()
+            results_map[idx] = result
+            completed_count += 1
+            yield {
+                "event": "progress", "step": "analyze-text",
+                "doc_id": result["doc_id"],
+                "current": completed_count, "total": total,
+            }
+
+    # 按原始顺序排列结果
+    results = [results_map[i] for i in range(total)]
 
     _pipeline_state["analyzed"] = True
     elapsed = round(time.time() - t0, 3)
