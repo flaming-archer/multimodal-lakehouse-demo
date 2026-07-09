@@ -131,7 +131,7 @@ DOCKER_MODE = os.getenv("DOCKER_MODE", "false").lower() == "true"
 
 # Service endpoints (override via env vars in Docker)
 GRAVITINO_URL = os.getenv("GRAVITINO_URL", "http://localhost:8090")
-S3_ENDPOINT = os.getenv("S3_ENDPOINT", "http://localhost:5001")
+S3_ENDPOINT = os.getenv("S3_ENDPOINT", "http://localhost:5002")
 S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "test")
 S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "test")
 RAY_DASHBOARD_URL = os.getenv("RAY_DASHBOARD_URL", "http://localhost:8265")
@@ -143,12 +143,14 @@ print(f"[Config] S3_ENDPOINT={S3_ENDPOINT}")
 
 # ── Infrastructure startup ──
 
+MOTO_S3_PORT = 5002
+
 def start_moto_s3():
     """Start moto S3 server in a background thread."""
     from moto.server import ThreadedMotoServer
-    server = ThreadedMotoServer(port=5001)
+    server = ThreadedMotoServer(port=MOTO_S3_PORT)
     server.start()
-    print("[Infra] moto S3 server started on port 5001")
+    print(f"[Infra] moto S3 server started on port {MOTO_S3_PORT}")
     return server
 
 
@@ -227,17 +229,19 @@ async def startup():
     # 注入 S3 到离线路由
     set_s3_store(s3_store)
 
-    # 预生成演示音频（本地缓存 + 尝试上传 S3）
-    try:
-        from offline_routes import DEMO_MANIFEST
-        from demo_audio import generate_all_demo_wavs, upload_to_s3 as upload_demo_audio
-        wavs = generate_all_demo_wavs(DEMO_MANIFEST)
-        print(f"[Main] Demo audio generated locally: {len(wavs)} files")
-        if s3_store:
-            keys = upload_demo_audio(s3_store, DEMO_MANIFEST)
-            print(f"[Main] Demo audio uploaded to S3: {len(keys)} files")
-    except Exception as e:
-        print(f"[Main] Demo audio generation failed: {e}")
+    # 预生成演示音频（后台线程，不阻塞启动）
+    def _preload_demo_audio():
+        try:
+            from offline_routes import DEMO_MANIFEST
+            from demo_audio import generate_all_demo_wavs, upload_to_s3 as upload_demo_audio
+            wavs = generate_all_demo_wavs(DEMO_MANIFEST)
+            print(f"[Main] Demo audio generated locally: {len(wavs)} files")
+            if s3_store:
+                keys = upload_demo_audio(s3_store, DEMO_MANIFEST)
+                print(f"[Main] Demo audio uploaded to S3: {len(keys)} files")
+        except Exception as e:
+            print(f"[Main] Demo audio generation failed: {e}")
+    threading.Thread(target=_preload_demo_audio, daemon=True).start()
 
     # ── Gravitino: mock server or real server ──
     if USE_MOCK_SERVICES:

@@ -25,7 +25,7 @@ from botocore.exceptions import ClientError
 @dataclass
 class S3StorageConfig:
     """Configuration for S3-compatible storage."""
-    endpoint_url: str = "http://localhost:5001"
+    endpoint_url: str = "http://localhost:5002"
     region_name: str = "us-east-1"
     access_key: str = "fake-access-key"
     secret_key: str = "fake-secret-key"

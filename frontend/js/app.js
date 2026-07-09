@@ -649,7 +649,7 @@ function runSimilaritySearch() {
           + '<span class="badge ' + riskBadge + '" style="font-size:10px">⚠️ ' + (r.risk_level || '?') + '</span>'
           + '<span class="badge ' + sentBadge + '" style="font-size:10px">😊 ' + (r.sentiment || '?') + '</span>'
           + '<span class="badge" style="font-size:10px;background:#FFF3E0;color:#E65100">💡 ' + (r.suggested_action || 'N/A') + '</span>'
-          + (r._distance != null ? '<span class="badge" style="font-size:10px;background:#E6F1FB;color:#185FA5">📏 ' + r._distance.toFixed(3) + '</span>' : '')
+          + (r._similarity != null ? '<span class="badge" style="font-size:10px;background:#E6F1FB;color:#185FA5">📏 相似度 ' + (r._similarity * 100).toFixed(1) + '%</span>' : '')
           + '</div>';
         if (r.switch_reason) {
           let reasons = Array.isArray(r.switch_reason) ? r.switch_reason : [r.switch_reason];
