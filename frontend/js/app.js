@@ -614,6 +614,41 @@ function loadStorageData() {
   }).catch(() => {
     document.getElementById('iceberg-data').innerHTML = '<span style="color:var(--red)">Iceberg 不可用</span>';
   });
+
+  loadImageLanceData();
+}
+
+function loadImageLanceData() {
+  var div = document.getElementById('image-lance-data');
+  if (!div) return;
+  div.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">正在读取 images.lance...</div>';
+  imageRequest('/api/image/records?limit=100').then(function(data) {
+    var rows = data.records || [];
+    var summary = data.summary || {};
+    var html = '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'
+      + '<strong style="color:var(--text)">' + escapeHtml(data.dataset || 'images.lance') + '</strong>'
+      + ' · ' + rows.length + ' / ' + (data.count || 0) + ' 条'
+      + ' · 已分析 ' + (summary.analyzed || 0)
+      + ' · 已生成向量 ' + (summary.embedded || 0)
+      + '</div>'
+      + '<div class="image-summary-row">'
+      + '<div><strong>' + (data.count || 0) + '</strong><span>表记录数</span></div>'
+      + '<div><strong style="color:var(--green)">' + (summary.avatars || 0) + '</strong><span>合规头像</span></div>'
+      + '<div><strong style="color:var(--amber)">' + (summary.rejected || 0) + '</strong><span>不合规</span></div>'
+      + '<div><strong style="color:var(--red)">' + (summary.failed || 0) + '</strong><span>处理失败</span></div>'
+      + '</div>';
+    if (!rows.length) {
+      html += '<div style="padding:20px;text-align:center;color:var(--muted)">表中暂无图片记录，请先运行图片流水线</div>';
+    } else {
+      html += '<div class="image-results-grid">';
+      rows.forEach(function(row) { html += renderImageCard(row); });
+      html += '</div>';
+    }
+    div.innerHTML = html;
+  }).catch(function(error) {
+    div.innerHTML = '<div class="image-error">暂时无法读取图片 Lance 表：'
+      + escapeHtml(error.message) + '</div>';
+  });
 }
 
 // ========== Similarity Search ==========
@@ -675,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadHistoryData() {
   const div = document.getElementById('history-list');
   div.innerHTML = '<span style="color:var(--muted)">加载中...</span>';
-  fetch(API + '/api/lance/records?limit=20').then(r => r.json()).then(d => {
+  fetch(API + '/api/lance/records?dataset=audio&limit=20').then(r => r.json()).then(d => {
     if (!d.records || d.records.length === 0) {
       div.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center">暂无历史数据，请先运行语音分析</div>';
       return;
@@ -703,7 +738,7 @@ function loadHistoryData() {
 function loadAllHistory() {
   const div = document.getElementById('history-list');
   div.innerHTML = '<span style="color:var(--muted)">加载全部记录...</span>';
-  fetch(API + '/api/lance/records?limit=200').then(r => r.json()).then(d => {
+  fetch(API + '/api/lance/records?dataset=audio&limit=200').then(r => r.json()).then(d => {
     if (!d.records || d.records.length === 0) {
       div.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center">暂无历史数据</div>';
       return;
@@ -833,6 +868,30 @@ function loadOverview() {
 }
 
 // ========== Tab switching ==========
+let activeAudioTab = 'offline';
+
+function showDemoWorkspace(workspace) {
+  const isImage = workspace === 'image';
+  const audioHeader = document.querySelector('.audio-workspace-header');
+  const audioTabs = document.querySelector('.demo-tabs');
+  if (audioHeader) audioHeader.style.display = isImage ? 'none' : '';
+  if (audioTabs) audioTabs.style.display = isImage ? 'none' : '';
+  document.querySelectorAll('.dt-content').forEach(content => { content.style.display = 'none'; });
+
+  if (isImage) {
+    const imageContent = document.getElementById('dt-image');
+    if (imageContent) imageContent.style.display = '';
+    loadImageStatus();
+    return;
+  }
+
+  document.querySelectorAll('.demo-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.dtab === activeAudioTab);
+  });
+  const audioContent = document.getElementById('dt-' + activeAudioTab);
+  if (audioContent) audioContent.style.display = '';
+}
+
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -840,14 +899,16 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     const panel = document.getElementById('panel-' + tab.dataset.panel);
     if (panel) panel.classList.add('active');
+    if (tab.dataset.panel === 'demo') showDemoWorkspace(tab.dataset.workspace || 'audio');
     if (tab.dataset.panel === 'data') { loadStorageData(); loadSqlTables(); }
     if (tab.dataset.panel === 'verify') runVerify();
   });
 });
 
-// Demo sub-tab switching (voice / text / realtime)
+// 音频工作区内部切换（批量 / 实时 / 录制 / 文字）
 document.querySelectorAll('.demo-tab').forEach(dtab => {
   dtab.addEventListener('click', () => {
+    activeAudioTab = dtab.dataset.dtab;
     document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.dt-content').forEach(c => c.style.display = 'none');
     dtab.classList.add('active');
@@ -863,6 +924,7 @@ function getResultDiv() {
   }
   // Switch to text sub-tab before showing results
   if (activeDTab && activeDTab.dataset.dtab !== 'text') {
+    activeAudioTab = 'text';
     document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.dt-content').forEach(c => c.style.display = 'none');
     const textTab = document.querySelector('.demo-tab[data-dtab="text"]');
@@ -1150,6 +1212,11 @@ function renderVerifyData(c) {
     const s = d.sample;
     items.push('📝 最新: ' + (s.call_id || '') + ' — 意图:' + (s.caller_intent || s.intent || 'N/A'));
   }
+  if (d.image_sample) {
+    const imageSample = d.image_sample;
+    items.push('🖼 图片样本: ' + (imageSample.doc_id || '') + ' — '
+      + (imageSample.is_avatar === true ? '合规头像' : imageSample.is_avatar === false ? '不合规' : (imageSample.analysis_status || '待分析')));
+  }
   if (d.sample && d.sample.total_calls !== undefined) {
     items.push('📊 聚合: ' + d.sample.total_calls + ' 通话 / 转网 ' + (d.sample.churn_intent_count || 0) + ' / 高风险 ' + (d.sample.high_risk_count || 0));
   }
@@ -1157,7 +1224,8 @@ function renderVerifyData(c) {
     items.push('🎯 测试意图: ' + d.intent + ' | 风险: ' + (d.risk_level || 'N/A'));
   }
   if (d.query_api) {
-    items.push('🔗 <a href="' + API + d.query_api + '" target="_blank">浏览数据</a>');
+    items.push('🔗 <a href="' + API + d.query_api + '" target="_blank">'
+      + (d.query_label || '浏览数据') + '</a>');
   }
   return items.length > 0 ? items.join('<br>') : '';
 }
@@ -1975,6 +2043,211 @@ function renderQueryResults(d) {
   html += renderSearchContent(d);
   html += '</div></div>';
   document.getElementById('offline-result').innerHTML = html;
+}
+
+// ========== 图片处理流水线 ==========
+
+function imageRequest(path, options) {
+  return fetch(API + path, options).then(function(response) {
+    return response.json().then(function(data) {
+      if (!response.ok) throw new Error(data.detail || data.message || ('HTTP ' + response.status));
+      return data;
+    });
+  });
+}
+
+function loadImageStatus() {
+  imageRequest('/api/image/status').then(function(data) {
+    var models = data.models || {};
+    var text = 'ChineseCLIP: ' + (models.chinese_clip_loaded ? '已加载' : '首次运行时加载');
+    if (models.vlm_configured) {
+      text += ' · VLM: ' + escapeHtml(models.vlm_model || '已配置');
+    } else {
+      text += ' · VLM 未配置 (' + escapeHtml((models.vlm_missing_config || []).join(', ')) + ')';
+    }
+    document.getElementById('image-model-status').innerHTML = text;
+  }).catch(function(error) {
+    document.getElementById('image-model-status').textContent = '模型状态读取失败：' + error.message;
+  });
+}
+
+function imageConsoleLine(message, color) {
+  var consoleEl = document.getElementById('image-console');
+  consoleEl.style.display = '';
+  consoleEl.innerHTML += '<div style="color:' + (color || '#d4d4d4') + '">' + escapeHtml(message) + '</div>';
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+function runImagePipeline() {
+  var backend = document.getElementById('image-analysis-backend').value;
+  var button = document.getElementById('btn-image-run');
+  button.disabled = true;
+  button.textContent = '运行中...';
+  document.getElementById('image-console').innerHTML = '';
+  document.getElementById('image-console').style.display = '';
+  document.getElementById('image-summary').innerHTML = '';
+  imageConsoleLine('启动图片流水线，合规后端：' + backend, '#569cd6');
+
+  var es = new EventSource(API + '/api/image/run-all-stream?analysis_backend=' + encodeURIComponent(backend));
+  var finished = false;
+  es.addEventListener('stage', function(event) {
+    var data = JSON.parse(event.data);
+    imageConsoleLine('[' + data.index + '/4] ' + data.label, '#dcdcaa');
+  });
+  es.addEventListener('progress', function(event) {
+    var data = JSON.parse(event.data);
+    imageConsoleLine('  [' + data.current + '/' + data.total + '] ' + data.doc_id + ' · ' + data.msg, '#858585');
+  });
+  es.addEventListener('result', function(event) {
+    var data = JSON.parse(event.data);
+    if (data.step === 'analyze') renderImageGallery(data.results || []);
+    if (data.step === 'query') renderImageQueryResults(data);
+    imageConsoleLine('  完成 ' + (data.step || data.type) + (data.duration_s != null ? ' (' + data.duration_s + 's)' : ''), '#6a9955');
+  });
+  es.addEventListener('done', function(event) {
+    finished = true;
+    var data = JSON.parse(event.data);
+    es.close();
+    imageConsoleLine('全部完成，总耗时 ' + data.total_duration_s + 's', '#6a9955');
+    button.disabled = false;
+    button.textContent = '重新运行图片流水线';
+    loadImageStatus();
+    loadImageLanceData();
+    toast('图片流水线执行完成');
+  });
+  es.addEventListener('error', function(event) {
+    if (event.data) {
+      finished = true;
+      var data = JSON.parse(event.data);
+      imageConsoleLine('失败：' + data.message, '#ce9178');
+      es.close();
+      button.disabled = false;
+      button.textContent = '启动图片流水线';
+      toast('图片流水线失败', 'error');
+    }
+  });
+  es.onerror = function() {
+    if (finished) return;
+    es.close();
+    imageConsoleLine('SSE 连接中断', '#ce9178');
+    button.disabled = false;
+    button.textContent = '启动图片流水线';
+  };
+}
+
+function runImageStep(step) {
+  var options = {method: 'POST', headers: {'Content-Type': 'application/json'}};
+  if (step === 'analyze') {
+    options.body = JSON.stringify({analysis_backend: document.getElementById('image-analysis-backend').value});
+  }
+  imageConsoleLine('执行 ' + step + '...', '#569cd6');
+  imageRequest('/api/image/' + step, options).then(function(data) {
+    imageConsoleLine(step + ' 完成 (' + (data.duration_s || 0) + 's)', '#6a9955');
+    if (data.results) renderImageGallery(data.results);
+    loadImageStatus();
+    loadImageLanceData();
+  }).catch(function(error) {
+    imageConsoleLine(step + ' 失败：' + error.message, '#ce9178');
+    toast(step + ' 失败', 'error');
+  });
+}
+
+function onImageQueryTypeChange() {
+  var textMode = document.getElementById('image-query-type').value === 'text';
+  document.getElementById('image-query-text').style.display = textMode ? '' : 'none';
+  document.getElementById('image-query-where').style.display = textMode ? 'none' : '';
+}
+
+function setImageTextQuery(text) {
+  document.getElementById('image-query-type').value = 'text';
+  document.getElementById('image-query-text').value = text;
+  onImageQueryTypeChange();
+  runImageQuery();
+}
+
+function setImageScalarQuery(where) {
+  document.getElementById('image-query-type').value = 'scalar';
+  document.getElementById('image-query-where').value = where;
+  onImageQueryTypeChange();
+  runImageQuery();
+}
+
+function runImageQuery() {
+  var type = document.getElementById('image-query-type').value;
+  var body = {
+    query_type: type,
+    top_k: parseInt(document.getElementById('image-query-topk').value) || 3
+  };
+  if (type === 'text') body.text = document.getElementById('image-query-text').value.trim();
+  else body.where = document.getElementById('image-query-where').value.trim() || null;
+  document.getElementById('image-query-results').innerHTML = '<div style="padding:18px;text-align:center;color:var(--muted)"><span class="loading-spin"></span>检索中...</div>';
+  imageRequest('/api/image/query', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+  }).then(renderImageQueryResults).catch(function(error) {
+    document.getElementById('image-query-results').innerHTML = '<div class="image-error">检索失败：' + escapeHtml(error.message) + '</div>';
+  });
+}
+
+function imageMetric(value, digits) {
+  if (value == null) return '—';
+  if (typeof value === 'number') return value.toFixed(digits == null ? 2 : digits);
+  return escapeHtml(String(value));
+}
+
+function renderImageCard(row, rank) {
+  var status = row.analysis_status || 'pending';
+  var statusHtml;
+  if (status !== 'ok') statusHtml = '<span class="badge badge-high">' + escapeHtml(status) + '</span>';
+  else if (row.is_avatar === true) statusHtml = '<span class="badge badge-low">合规头像</span>';
+  else if (row.is_avatar === false) statusHtml = '<span class="badge badge-med">不合规</span>';
+  else statusHtml = '<span class="badge">待判断</span>';
+  var canPreview = status !== 'download_failed' && status !== 'decode_failed';
+  var preview = canPreview
+    ? '<img loading="lazy" src="' + escapeHtml(row.preview_url || '') + '" alt="' + escapeHtml(row.description || row.doc_id) + '">'
+    : '<div class="image-placeholder">无法预览</div>';
+  var distance = row._distance == null ? '' : '<span class="image-distance">距离 ' + imageMetric(row._distance, 4) + '</span>';
+  return '<div class="image-result-card">'
+    + '<div class="image-preview">' + preview + '</div>'
+    + '<div class="image-card-body">'
+    + '<div class="image-card-title">' + (rank ? '<span class="image-rank">#' + rank + '</span>' : '')
+    + escapeHtml(row.doc_id || '') + statusHtml + distance + '</div>'
+    + '<div class="image-description">' + escapeHtml(row.description || '') + '</div>'
+    + '<div class="image-metrics">'
+    + '<span>后端 <strong>' + escapeHtml(row.analysis_backend || '—') + '</strong></span>'
+    + '<span>人脸 <strong>' + imageMetric(row.face_count, 0) + '</strong></span>'
+    + '<span>人脸占比 <strong>' + (row.face_area_ratio == null ? '—' : (row.face_area_ratio * 100).toFixed(1) + '%') + '</strong></span>'
+    + '<span>整图清晰度 <strong>' + imageMetric(row.blur_score, 1) + '</strong></span>'
+    + '<span>头像置信度 <strong>' + imageMetric(row.avatar_confidence, 2) + '</strong></span>'
+    + '</div>'
+    + '<div class="image-reason">' + escapeHtml(row.analysis_reason || row.analysis_error || '尚未执行合规分析') + '</div>'
+    + '</div></div>';
+}
+
+function renderImageGallery(rows) {
+  var ok = rows.filter(function(row) { return row.is_avatar === true; }).length;
+  var rejected = rows.filter(function(row) { return row.is_avatar === false; }).length;
+  var failed = rows.filter(function(row) { return row.analysis_status && row.analysis_status !== 'ok'; }).length;
+  var html = '<div class="image-summary-row">'
+    + '<div><strong>' + rows.length + '</strong><span>处理总数</span></div>'
+    + '<div><strong style="color:var(--green)">' + ok + '</strong><span>合规头像</span></div>'
+    + '<div><strong style="color:var(--amber)">' + rejected + '</strong><span>不合规</span></div>'
+    + '<div><strong style="color:var(--red)">' + failed + '</strong><span>处理失败</span></div>'
+    + '</div><div class="image-results-grid">';
+  rows.forEach(function(row) { html += renderImageCard(row); });
+  html += '</div>';
+  document.getElementById('image-summary').innerHTML = html;
+}
+
+function renderImageQueryResults(data) {
+  var rows = data.results || [];
+  var label = data.type === 'text' ? '“' + escapeHtml(data.text || '') + '”' : escapeHtml(data.where || '全部图片');
+  var html = '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'
+    + label + ' · 返回 ' + rows.length + ' 条 · ' + (data.duration_s || 0) + 's</div>'
+    + '<div class="image-results-grid">';
+  rows.forEach(function(row, index) { html += renderImageCard(row, index + 1); });
+  html += '</div>';
+  if (!rows.length) html = '<div style="padding:20px;text-align:center;color:var(--muted)">没有匹配图片</div>';
+  document.getElementById('image-query-results').innerHTML = html;
 }
 
 // SQL 编辑器内容持久化到 localStorage

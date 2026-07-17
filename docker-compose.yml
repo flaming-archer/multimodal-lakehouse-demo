@@ -101,13 +101,23 @@ services:
       - USE_MOCK_SERVICES=false
       - DOCKER_MODE=true
       - USE_REAL_RAY=false
+      - HF_HOME=/root/.cache/huggingface
+      - IMAGE_EMBED_MODEL=OFA-Sys/chinese-clip-vit-base-patch16
+      - IMAGE_EMBED_DEVICE=cpu
+      - IMAGE_VLM_API_KEY=${IMAGE_VLM_API_KEY:-}
+      - IMAGE_VLM_BASE_URL=${IMAGE_VLM_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - IMAGE_VLM_MODEL=${IMAGE_VLM_MODEL:-}
       - PYTHONUTF8=1
       - TZ=Asia/Shanghai
     volumes:
       - ./data:/app/data
       - ./backend:/app/backend
       - ./frontend:/app/frontend
+      - huggingface-cache:/root/.cache/huggingface
+      - insightface-cache:/root/.insightface
     restart: unless-stopped
 
 volumes:
   minio-data:
+  huggingface-cache:
+  insightface-cache:

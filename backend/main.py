@@ -39,7 +39,7 @@ import asyncio
 import json
 import subprocess
 from datetime import datetime, date
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Literal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -62,6 +62,9 @@ from call_generator import call_generator
 from config import DEMO_TRANSCRIPTS, DEMO_SCENARIOS
 
 from offline_routes import router as offline_router, set_s3_store
+from image_routes import router as image_router
+from image_pipeline import PipelineStateError as ImagePipelineStateError
+from image_pipeline import list_records as list_image_records
 from sql_query import SQLQueryEngine
 
 # ── App ──
@@ -784,8 +787,50 @@ def lance_stats():
     return lance_store.get_stats()
 
 @app.get("/api/lance/records")
-def lance_records(limit: int = 50):
-    return {"count": lance_store.count(), "records": lance_store.list_all(limit)}
+def lance_records(
+    limit: int = 50,
+    dataset: Literal["all", "audio", "image"] = "all",
+):
+    """统一浏览音频和图片 Lance 数据；大体积 blob/向量列不会返回。"""
+    if limit < 1 or limit > 200:
+        raise HTTPException(422, "limit 必须在 1 到 200 之间")
+
+    audio_records = lance_store.list_all(limit) if dataset in {"all", "audio"} else []
+    audio = {
+        "dataset": "voice_analysis.lance",
+        "count": lance_store.count() if dataset in {"all", "audio"} else 0,
+        "records": [{"_dataset": "audio", **row} for row in audio_records],
+    }
+
+    image = {
+        "dataset": "images.lance",
+        "count": 0,
+        "records": [],
+        "summary": {},
+    }
+    if dataset in {"all", "image"}:
+        try:
+            image_result = list_image_records(limit)
+            image = {
+                **image_result,
+                "records": [
+                    {"_dataset": "image", **row}
+                    for row in image_result.get("records", [])
+                ],
+            }
+        except ImagePipelineStateError as exc:
+            image["error"] = str(exc)
+
+    if dataset == "audio":
+        return audio
+    if dataset == "image":
+        return image
+    return {
+        "dataset": "all",
+        "count": audio["count"] + image["count"],
+        "datasets": {"audio": audio, "image": image},
+        "records": audio["records"] + image["records"],
+    }
 
 @app.get("/api/lance/record/{call_id}")
 def lance_record(call_id: str):
@@ -2120,18 +2165,35 @@ def system_verify():
     }
     try:
         ls = lance_store.get_stats()
-        record_count = ls.get("records", 0)
+        audio_record_count = ls.get("records", 0)
+        try:
+            image_records = list_image_records(3)
+        except ImagePipelineStateError:
+            image_records = {"count": 0, "records": [], "summary": {}}
+        image_record_count = image_records.get("count", 0)
+        record_count = audio_record_count + image_record_count
         lance_result["checks"].append({
-            "label": "存储记录数",
-            "value": f"{record_count} 条通话分析",
+            "label": "音频 Lance",
+            "value": f"{audio_record_count} 条",
+            "pass": audio_record_count > 0,
+        })
+        lance_result["checks"].append({
+            "label": "图片 Lance",
+            "value": f"{image_record_count} 条",
+            "pass": image_record_count > 0,
+        })
+        lance_result["checks"].append({
+            "label": "多模态总记录数",
+            "value": f"{record_count} 条",
             "pass": record_count > 0,
         })
         # Get sample records
         samples = lance_store.list_all(3)
-        if samples:
+        image_samples = image_records.get("records", [])
+        if samples or image_samples:
             lance_result["checks"].append({
                 "label": "数据完整性",
-                "value": f"可读取 {len(samples)} 条记录",
+                "value": f"音频 {len(samples)} / 图片 {len(image_samples)} 条样本",
                 "pass": True,
             })
         # Risk distribution
@@ -2149,9 +2211,13 @@ def system_verify():
         })
         lance_result["data"] = {
             "records": record_count,
+            "audio_records": audio_record_count,
+            "image_records": image_record_count,
             "risk_distribution": risk_dist,
             "sample": samples[0] if samples else None,
-            "query_api": "/api/lance/records",
+            "image_sample": image_samples[0] if image_samples else None,
+            "query_api": "/api/lance/records?dataset=all",
+            "query_label": "浏览全部 Lance 数据",
             "search_api": "/api/lance/search",
         }
     except Exception as e:
@@ -2311,6 +2377,7 @@ def get_llm_prompt(req: TranscriptRequest):
 # ── 离线批处理流水线路由 ──
 
 app.include_router(offline_router)
+app.include_router(image_router)
 
 
 # ── Main ──

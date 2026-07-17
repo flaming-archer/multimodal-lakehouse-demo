@@ -4,6 +4,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -16,12 +17,14 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 # Copy application code
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
+COPY data/images/ ./data/images/
 
 # Set environment variables for Docker mode (connect to real services)
 ENV USE_MOCK_SERVICES=false
 ENV DOCKER_MODE=true
 ENV PYTHONUTF8=1
 ENV TZ=Asia/Shanghai
+ENV HF_HOME=/root/.cache/huggingface
 
 # Expose ports
 EXPOSE 8888
