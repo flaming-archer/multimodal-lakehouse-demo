@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>多模态湖仓处理平台</title>
-<link rel="stylesheet" href="/static/css/style.css?v=3">
+<link rel="stylesheet" href="/static/css/style.css?v=5">
 </head>
 <body>
 
@@ -21,26 +21,35 @@
 
 <div class="container">
   <div class="tabs">
-    <button class="tab active" data-panel="demo">演示中心</button>
-    <button class="tab" data-panel="data">数据管理</button>
+    <button class="tab active" data-panel="demo" data-workspace="audio">🎧 音频处理</button>
+    <button class="tab" data-panel="demo" data-workspace="image">🖼 图片处理</button>
+    <button class="tab" data-panel="data">🗄 公共数据</button>
     <button class="tab" data-panel="benchmark">性能基准</button>
     <button class="tab" data-panel="architecture">架构流程</button>
     <button class="tab" data-panel="verify">验证中心</button>
   </div>
 
-  <!-- Demo Center Panel (合并 语音解析演示 + 实时监控) -->
+  <!-- 多模态处理工作区：顶层导航负责在音频与图片之间切换 -->
   <div id="panel-demo" class="panel active">
+    <div class="workspace-heading audio-workspace-header">
+      <div class="workspace-icon">🎧</div>
+      <div>
+        <div class="workspace-kicker">AUDIO WORKSPACE</div>
+        <h2>音频处理</h2>
+        <p>从历史录音批处理到实时通话、录音交互和文字分析，音频能力集中在同一工作区。</p>
+      </div>
+    </div>
     <div class="demo-tabs">
-      <button class="demo-tab active" data-dtab="offline">离线流水线</button>
+      <button class="demo-tab active" data-dtab="offline">批量音频流水线</button>
       <button class="demo-tab" data-dtab="realtime">实时模拟</button>
       <button class="demo-tab" data-dtab="voice">语音录制</button>
       <button class="demo-tab" data-dtab="text">文字演示</button>
     </div>
 
-    <!-- 离线流水线 -->
+    <!-- 批量音频流水线 -->
     <div id="dt-offline" class="dt-content">
       <div class="card">
-        <h3>离线 —— 湖上多模数据处理流水线</h3>
+        <h3>批量音频处理流水线</h3>
         <div id="offline-demo-area">
           <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
             将历史音频经过「加载语音 → 转写+情绪 → 智能分析 → 检索」四步处理，形成可查可用的数据资产
@@ -107,6 +116,80 @@
             <div id="offline-search-result"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 图片处理流水线 -->
+    <div id="dt-image" class="dt-content" style="display:none">
+      <div class="workspace-heading image-workspace-header">
+        <div class="workspace-icon">🖼</div>
+        <div>
+          <div class="workspace-kicker">IMAGE WORKSPACE</div>
+          <h2>图片处理</h2>
+          <p>图片入库、头像合规、ChineseCLIP 向量和文本搜图组成独立图片流水线。</p>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div>
+            <h3 style="margin-bottom:4px">图片头像合规与文本搜图</h3>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+              现场运行人脸检测、清晰度分析和 ChineseCLIP 向量编码；不使用预计算结果
+            </p>
+          </div>
+          <div style="min-width:230px">
+            <label style="font-size:11px;color:var(--muted)">合规判断后端</label>
+            <select id="image-analysis-backend" class="select-box" style="margin:3px 0 2px">
+              <option value="local">本地规则 · SCRFD + 清晰度</option>
+              <option value="vlm">视觉大模型 · OpenAI Compatible</option>
+            </select>
+            <div id="image-model-status" style="font-size:10px;color:var(--muted)">正在读取模型状态...</div>
+          </div>
+        </div>
+
+        <div class="offline-flow" style="display:flex;align-items:flex-start;gap:0;margin-bottom:16px;padding:16px;background:linear-gradient(135deg,#fafafa,#f5f5f2);border-radius:10px;border:1px solid var(--border)">
+          <div class="offline-step-node"><div class="offline-step-circle" style="background:var(--blue)">1</div><div class="offline-step-label">🖼 图片入库</div><div class="offline-step-desc">15 条 Manifest<br>写入 Lance</div></div>
+          <span class="offline-step-arrow">▸</span>
+          <div class="offline-step-node"><div class="offline-step-circle" style="background:var(--red)">2</div><div class="offline-step-label">🙂 合规分析</div><div class="offline-step-desc">本地规则或 VLM<br>互斥执行</div></div>
+          <span class="offline-step-arrow">▸</span>
+          <div class="offline-step-node"><div class="offline-step-circle" style="background:var(--green)">3</div><div class="offline-step-label">🧠 图片向量</div><div class="offline-step-desc">ChineseCLIP<br>512 维向量</div></div>
+          <span class="offline-step-arrow">▸</span>
+          <div class="offline-step-node"><div class="offline-step-circle" style="background:var(--amber)">4</div><div class="offline-step-label">🔎 文本搜图</div><div class="offline-step-desc">中文文本编码<br>Lance 向量扫描</div></div>
+        </div>
+
+        <div class="btn-group" style="margin-bottom:10px">
+          <button class="btn btn-primary" id="btn-image-run" onclick="runImagePipeline()">启动图片流水线</button>
+          <button class="btn" onclick="runImageStep('ingest')">1. 图片入库</button>
+          <button class="btn" onclick="runImageStep('analyze')">2. 合规分析</button>
+          <button class="btn" onclick="runImageStep('embed')">3. 生成向量</button>
+        </div>
+        <div id="image-console" class="image-console" style="display:none"></div>
+        <div id="image-summary"></div>
+      </div>
+
+      <div class="card">
+        <h3>中文文本搜图与标量筛选</h3>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="image-query-type" class="select-box" style="width:auto;margin:0" onchange="onImageQueryTypeChange()">
+            <option value="text">中文文本搜图</option>
+            <option value="scalar">标量筛选</option>
+          </select>
+          <input id="image-query-text" class="select-box" style="flex:1;min-width:220px;margin:0" value="戴口罩的人脸" placeholder="例如：戴口罩、戴墨镜、多人合影">
+          <input id="image-query-where" class="select-box" style="flex:1;min-width:220px;margin:0;display:none" value="is_avatar = true" placeholder="例如：is_avatar = true">
+          <select id="image-query-topk" class="select-box" style="width:85px;margin:0"><option value="3">Top 3</option><option value="5">Top 5</option><option value="10">Top 10</option></select>
+          <button class="btn btn-primary" onclick="runImageQuery()">检索</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:9px">
+          快捷：
+          <a class="sql-link" href="javascript:void(0)" onclick="setImageTextQuery('脸部模糊的证件照')">脸部模糊</a>
+          <a class="sql-link" href="javascript:void(0)" onclick="setImageTextQuery('戴口罩的人脸')">戴口罩</a>
+          <a class="sql-link" href="javascript:void(0)" onclick="setImageTextQuery('戴墨镜的人脸')">戴墨镜</a>
+          <a class="sql-link" href="javascript:void(0)" onclick="setImageTextQuery('手遮住脸的人像')">手遮脸</a>
+          <a class="sql-link" href="javascript:void(0)" onclick="setImageTextQuery('一男一女两个人的合影')">多人</a>
+          <a class="sql-link" href="javascript:void(0)" onclick="setImageScalarQuery('is_avatar = true')">合规</a>
+          <a class="sql-link" href="javascript:void(0)" onclick="setImageScalarQuery(&quot;analysis_status != 'ok'&quot;)">处理失败</a>
+        </div>
+        <div id="image-query-results" style="margin-top:14px"></div>
       </div>
     </div>
 
@@ -203,18 +286,35 @@
 
   <!-- Data Management Panel -->
   <div id="panel-data" class="panel">
+    <div class="workspace-heading data-workspace-header">
+      <div class="workspace-icon">🗄</div>
+      <div>
+        <div class="workspace-kicker">SHARED DATA</div>
+        <h2>公共数据</h2>
+        <p>统一查看音频与图片产生的 Lance 数据、Iceberg 聚合结果，并通过 SQL 或向量进行跨流程查询。</p>
+      </div>
+    </div>
     <div class="grid2">
       <div class="card">
-        <h3>Lance 数据集</h3>
+        <h3>音频 Lance 数据集</h3>
         <div id="lance-data">
           <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">加载中...</div>
         </div>
       </div>
       <div class="card">
-        <h3>Iceberg 表</h3>
+        <h3>公共 Iceberg 聚合表</h3>
         <div id="iceberg-data">
           <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">加载中...</div>
         </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <h3 style="margin-bottom:0">图片 Lance 数据集与分析明细</h3>
+        <button class="btn" onclick="loadImageLanceData()">刷新</button>
+      </div>
+      <div id="image-lance-data" style="margin-top:12px">
+        <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">加载中...</div>
       </div>
     </div>
     <div class="card">
@@ -238,7 +338,7 @@
       <div id="sql-result" style="margin-top:10px"></div>
     </div>
     <div class="card">
-      <h3>📋 历史数据浏览</h3>
+      <h3>🎧 音频 Lance 明细浏览</h3>
       <div class="btn-group" style="margin-bottom:10px">
         <button class="btn btn-primary" onclick="loadHistoryData()">加载最近 20 条</button>
         <button class="btn" onclick="loadAllHistory()">加载全部</button>
@@ -248,7 +348,7 @@
       </div>
     </div>
     <div class="card">
-      <h3>🔍 相似度搜索</h3>
+      <h3>🎧 音频向量相似度搜索</h3>
       <div style="display:flex;gap:8px">
         <input type="text" id="similarity-query" class="select-box" style="flex:1;margin-bottom:0" placeholder="输入查询文本，如: 我要转网，太贵了...">
         <button class="btn btn-primary" onclick="runSimilaritySearch()">搜索</button>
@@ -300,7 +400,7 @@
     <div class="card">
       <h3>📊 数据流程图</h3>
       <div style="text-align:center;overflow-x:auto">
-        <img src="/static/flow.png" alt="数据流程图" style="max-width:100%;border-radius:8px;border:1px solid var(--border)">
+        <img src="/static/flow.png?v=2" alt="音频与图片数据处理及查询流程图" style="width:100%;height:auto;border-radius:8px;border:1px solid var(--border)">
       </div>
     </div>
     <div class="card">
@@ -356,7 +456,7 @@
 
           <rect x="350" y="0" width="400" height="55" rx="10" fill="url(#g-frontend)" stroke="#534AB7" stroke-width="1.5"/>
           <text x="550" y="22" text-anchor="middle" font-size="14" font-weight="600" fill="#534AB7">Web 前端 (port 8888)</text>
-          <text x="550" y="42" text-anchor="middle" font-size="11" fill="#6b6b66">演示中心 · 数据管理 · 性能基准 · 架构流程 · 验证中心</text>
+          <text x="550" y="42" text-anchor="middle" font-size="11" fill="#6b6b66">音频处理 · 图片处理 · 公共数据 · 性能基准 · 架构流程 · 验证中心</text>
 
           <rect x="350" y="80" width="400" height="65" rx="10" fill="url(#g-api)" stroke="#185FA5" stroke-width="1.5"/>
           <text x="550" y="102" text-anchor="middle" font-size="14" font-weight="600" fill="#185FA5">FastAPI 主服务 (port 8888)</text>
@@ -464,6 +564,6 @@
   </div>
 </div>
 
-<script src="/static/js/app.js?v=3"></script>
+<script src="/static/js/app.js?v=5"></script>
 </body>
 </html>

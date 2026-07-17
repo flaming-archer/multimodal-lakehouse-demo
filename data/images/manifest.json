@@ -1,0 +1,107 @@
+[
+  {
+    "doc_id": "id_standard_woman",
+    "file": "id_standard_woman.jpg",
+    "scenario": "standard",
+    "expected_avatar": true,
+    "description": "标准单人正面女性证件照，五官无遮挡"
+  },
+  {
+    "doc_id": "id_standard_man",
+    "file": "id_standard_man.jpg",
+    "scenario": "standard",
+    "expected_avatar": true,
+    "description": "标准单人正面男性证件照，五官无遮挡"
+  },
+  {
+    "doc_id": "id_group_two",
+    "file": "id_group_two.jpg",
+    "scenario": "multiple_people",
+    "expected_avatar": false,
+    "description": "两人同时入镜的证件照风格照片"
+  },
+  {
+    "doc_id": "id_medical_mask",
+    "file": "id_medical_mask.jpg",
+    "scenario": "lower_face_occluded",
+    "expected_avatar": false,
+    "description": "佩戴口罩，鼻子、嘴和下半脸被大面积遮挡"
+  },
+  {
+    "doc_id": "id_sunglasses",
+    "file": "id_sunglasses.jpg",
+    "scenario": "eyes_occluded",
+    "expected_avatar": false,
+    "description": "佩戴不透明大墨镜，双眼和眉毛被遮挡"
+  },
+  {
+    "doc_id": "id_hand_occluded",
+    "file": "id_hand_occluded.jpg",
+    "scenario": "hand_occluded",
+    "expected_avatar": false,
+    "description": "手掌遮住一只眼、鼻子和部分嘴部"
+  },
+  {
+    "doc_id": "id_side_profile",
+    "file": "id_side_profile.jpg",
+    "scenario": "side_profile",
+    "expected_avatar": false,
+    "description": "接近九十度的强侧脸，只能看到一只眼睛"
+  },
+  {
+    "doc_id": "id_face_blurred",
+    "file": "id_face_blurred.jpg",
+    "scenario": "face_blurred",
+    "expected_avatar": false,
+    "description": "背景和衣服清晰，但脸部区域明显模糊"
+  },
+  {
+    "doc_id": "id_full_blurred",
+    "file": "id_full_blurred.jpg",
+    "scenario": "image_blurred",
+    "expected_avatar": false,
+    "description": "整张证件照严重失焦模糊"
+  },
+  {
+    "doc_id": "id_face_cropped",
+    "file": "id_face_cropped.jpg",
+    "scenario": "face_cropped",
+    "expected_avatar": false,
+    "description": "人脸严重出框，只保留约半张脸"
+  },
+  {
+    "doc_id": "id_tiny_face",
+    "file": "id_tiny_face.jpg",
+    "scenario": "tiny_face",
+    "expected_avatar": false,
+    "description": "证件照在大幅背景中占比过小"
+  },
+  {
+    "doc_id": "id_overexposed",
+    "file": "id_overexposed.jpg",
+    "scenario": "overexposed",
+    "expected_avatar": false,
+    "description": "人脸和背景严重过曝，五官细节丢失"
+  },
+  {
+    "doc_id": "id_underexposed",
+    "file": "id_underexposed.jpg",
+    "scenario": "underexposed",
+    "expected_avatar": false,
+    "description": "整张证件照严重欠曝，脸部过暗"
+  },
+  {
+    "doc_id": "corrupt_image",
+    "file": "corrupt.jpg",
+    "scenario": "corrupt_file",
+    "expected_avatar": null,
+    "description": "内容损坏、无法解码的图片文件"
+  },
+  {
+    "doc_id": "missing_image",
+    "file": "missing.jpg",
+    "scenario": "missing_file",
+    "expected_avatar": null,
+    "description": "Manifest 中存在但源文件缺失的记录"
+  }
+]

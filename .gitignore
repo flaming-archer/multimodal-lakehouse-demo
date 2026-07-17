@@ -9,8 +9,10 @@ build/
 .venv
 venv/
 
-# Data - local data files, can be large
-data/
+# Data - local runtime data is ignored; small image demo fixtures are versioned
+data/*
+!data/images/
+!data/images/**
 *.db
 *.duckdb
 

@@ -1,0 +1,44 @@
+[
+  {
+    "file": "id_standard_woman.jpg",
+    "model": "wanx2.1-t2i-plus",
+    "task_id": "4a8b6f4d-d366-4f62-b076-b392d8d3ca17",
+    "prompt": "Photorealistic official ID portrait test fixture of a fictional adult who does not resemble any real person or public figure. Neutral expression, realistic skin texture, head and shoulders, plain pale blue studio background, even frontal studio lighting, square 1:1 composition. No text, no logo, no watermark, no document border, no uniform, no celebrity. One fictional East Asian woman, facing camera directly, both eyes nose mouth and full face contour clearly visible, professional dark blazer."
+  },
+  {
+    "file": "id_standard_man.jpg",
+    "model": "wanx2.1-t2i-plus",
+    "task_id": "3b590f5f-079d-41da-ba82-a71f89499fcc",
+    "prompt": "Photorealistic official ID portrait test fixture of a fictional adult who does not resemble any real person or public figure. Neutral expression, realistic skin texture, head and shoulders, plain pale blue studio background, even frontal studio lighting, square 1:1 composition. No text, no logo, no watermark, no document border, no uniform, no celebrity. One fictional East Asian man, facing camera directly, both eyes nose mouth and full face contour clearly visible, professional dark jacket."
+  },
+  {
+    "file": "id_group_two.jpg",
+    "model": "wanx2.1-t2i-plus",
+    "task_id": "39315a15-eb79-426d-bc57-5f4bfbf5f4bf",
+    "prompt": "Photorealistic ID-photo-style test fixture with exactly two fictional East Asian adults standing shoulder to shoulder, both faces equally prominent and clearly visible, plain pale blue studio background, even lighting, square composition. No text, no logo, no watermark, no document border, no celebrity."
+  },
+  {
+    "file": "id_medical_mask.jpg",
+    "model": "wanx2.1-t2i-plus",
+    "task_id": "ca9b9e34-1ed7-4cbb-b7db-a0bdbec740b5",
+    "prompt": "Photorealistic official ID portrait test fixture of a fictional adult who does not resemble any real person or public figure. Neutral expression, realistic skin texture, head and shoulders, plain pale blue studio background, even frontal studio lighting, square 1:1 composition. No text, no logo, no watermark, no document border, no uniform, no celebrity. One fictional East Asian adult facing camera, wearing an opaque surgical mask that fully covers nose, mouth and lower cheeks; only eyes and forehead visible."
+  },
+  {
+    "file": "id_sunglasses.jpg",
+    "model": "wanx2.1-t2i-plus",
+    "task_id": "7c81a477-1be1-4412-ae53-50499b5cbede",
+    "prompt": "Photorealistic official ID portrait test fixture of a fictional adult who does not resemble any real person or public figure. Neutral expression, realistic skin texture, head and shoulders, plain pale blue studio background, even frontal studio lighting, square 1:1 composition. No text, no logo, no watermark, no document border, no uniform, no celebrity. One fictional East Asian adult facing camera, wearing oversized opaque black sunglasses that completely hide both eyes and eyebrows."
+  },
+  {
+    "file": "id_hand_occluded.jpg",
+    "model": "wanx2.1-t2i-plus",
+    "task_id": "c73f1114-a826-4ef7-a96c-a2fd0a79a3d2",
+    "prompt": "Photorealistic official ID portrait test fixture of a fictional adult who does not resemble any real person or public figure. Neutral expression, realistic skin texture, head and shoulders, plain pale blue studio background, even frontal studio lighting, square 1:1 composition. No text, no logo, no watermark, no document border, no uniform, no celebrity. One fictional East Asian adult facing camera, with one open hand held directly in front of the face, covering one eye, most of the nose and part of the mouth."
+  },
+  {
+    "file": "id_side_profile.jpg",
+    "model": "wanx2.1-t2i-plus",
+    "task_id": "9ff5a747-17a6-4a3d-aac3-5e5ff97d55db",
+    "prompt": "Photorealistic official ID portrait test fixture of a fictional adult who does not resemble any real person or public figure. Neutral expression, realistic skin texture, head and shoulders, plain pale blue studio background, even frontal studio lighting, square 1:1 composition. No text, no logo, no watermark, no document border, no uniform, no celebrity. One fictional East Asian adult photographed in strong 80-degree side profile, looking away from camera, only one eye visible."
+  }
+]
